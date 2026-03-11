@@ -47,6 +47,7 @@ class WastParser {
   void WABT_PRINTF_FORMAT(3, 4) Error(Location, const char* format, ...);
   Result ParseModule(std::unique_ptr<Module>* out_module);
   Result ParseScript(std::unique_ptr<Script>* out_script);
+  Result ParseComponent(std::unique_ptr<Component>* out_component);
 
   std::unique_ptr<Script> ReleaseScript();
 
@@ -88,6 +89,14 @@ class WastParser {
 
     Func* target_func;
     TypeVector types;
+    ReferenceVars vars;
+  };
+
+  struct ResolveField {
+    ResolveField(StructType* target_struct)
+      : target_struct(target_struct) {}
+
+    StructType* target_struct;
     ReferenceVars vars;
   };
 
@@ -171,7 +180,7 @@ class WastParser {
   bool ParseElemExprListOpt(ExprListVector* out_list);
   bool ParseElemExprVarListOpt(ExprListVector* out_list);
   Result ParseRefDeclaration(Var* out_type);
-  Result ParseValueType(Var* out_type);
+  Result ParseValueType(Var* out_type, bool is_field = false);
   Result ParseValueTypeList(
       TypeVector* out_type_list,
       ReferenceVars* type_vars);
@@ -190,6 +199,8 @@ class WastParser {
   static Result ResolveTargetRefType(const Module&, Type*, const Var&, Errors*);
   static Result ResolveTargetTypeVector(const Module&, TypeVector*,
                                         ReferenceVars*, Errors*);
+  static Result ResolveTargetFieldVector(const Module&, StructType*,
+                                         ReferenceVars*, Errors* errors);
   Result ParseModuleFieldList(Module*);
   Result ParseModuleField(Module*);
   Result ParseDataModuleField(Module*);
@@ -198,6 +209,7 @@ class WastParser {
   Result ParseExportModuleField(Module*);
   Result ParseFuncModuleField(Module*);
   Result ParseTypeModuleField(Module*);
+  Result ParseRecTypeModuleField(Module*);
   Result ParseGlobalModuleField(Module*);
   Result ParseImportModuleField(Module*);
   Result ParseMemoryModuleField(Module*);
@@ -248,10 +260,12 @@ class WastParser {
   Result ParseCatchExprList(CatchVector* catches);
   Result ParseGlobalType(Global*);
   Result ParseField(Field*);
-  Result ParseFieldList(std::vector<Field>*);
+  Result ParseFieldList(StructType*);
 
   template <typename T>
   Result ParsePlainInstrVar(Location, std::unique_ptr<Expr>*);
+  template <typename T>
+  Result ParsePlainInstrVarVar(Location, std::unique_ptr<Expr>*);
   template <typename T>
   Result ParseMemoryInstrVar(Location, std::unique_ptr<Expr>*);
   template <typename T>
@@ -265,6 +279,29 @@ class WastParser {
   template <typename T>
   Result ParseMemoryBinaryExpr(Location, std::unique_ptr<Expr>*);
   Result ParseSimdLane(Location, uint64_t*);
+
+  Result ParseComponentSort(ComponentDef::Sort* out_sort);
+  Result ParseComponentName(ComponentSharedData*,
+                            Component::StringTable*,
+                            ComponentDef::Sort,
+                            const std::string** out_name);
+  Result ParseComponentIndex(ComponentSharedData*,
+                             Component::StringTable*,
+                             ComponentDef::Sort,
+                             Index* out_index);
+  Result ParseComponentAlias(ComponentSharedData*, Component::StringTable*);
+  Result ParseComponentExtern(ComponentSharedData*, Component::StringTable*);
+  Result ParseComponentDefValType(ComponentSharedData*,
+                                  Component::StringTable*,
+                                  ComponentType* out_type);
+  Result ParseComponentValType(ComponentSharedData*,
+                               Component::StringTable*,
+                               ComponentType* out_type);
+  Result ParseComponentFuncType(ComponentSharedData*, Component::StringTable*);
+  Result ParseComponentInstanceType(ComponentSharedData*,
+                                    Component::StringTable*);
+  Result ParseComponentType(ComponentSharedData*, Component::StringTable*);
+  Result ParseComponent(ComponentData*, Component::StringTable*);
 
   Result ParseCommandList(Script*, CommandPtrVector*);
   Result ParseCommand(Script*, CommandPtr*);
@@ -322,6 +359,11 @@ class WastParser {
   // following vector. At least one reference must be present for each vector.
   std::vector<ResolveFunc> resolve_funcs_;
 
+  // Structure fields and their corresponding references are
+  // stored in the following vector. At least one reference
+  // must be present for each structure.
+  std::vector<ResolveField> resolve_fields_;
+
   // two-element queue of upcoming tokens
   class TokenQueue {
     std::array<std::optional<Token>, 2> tokens{};
@@ -348,6 +390,11 @@ Result ParseWastScript(WastLexer* lexer,
                        std::unique_ptr<Script>* out_script,
                        Errors*,
                        WastParseOptions* options);
+
+Result ParseWatComponent(WastLexer* lexer,
+                         std::unique_ptr<Component>* out_component,
+                         Errors*,
+                         WastParseOptions* options);
 
 }  // namespace wabt
 
