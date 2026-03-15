@@ -1,4 +1,6 @@
-const char* s_header_top = R"w2c_template(#include <stdint.h>
+const char* s_header_top = R"w2c_template(// #include <stdint.h>
+)w2c_template"
+R"w2c_template(#include <linux/types.h>
 )w2c_template"
 R"w2c_template(
 #ifndef WASM_RT_CORE_TYPES_DEFINED
