@@ -1,4 +1,5 @@
-#include <stdint.h>
+// #include <stdint.h>
+#include <linux/types.h>
 
 #ifndef WASM_RT_CORE_TYPES_DEFINED
 #define WASM_RT_CORE_TYPES_DEFINED
