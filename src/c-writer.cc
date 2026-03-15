@@ -3602,7 +3602,6 @@ void CWriter::Write(const ExprList& exprs) {
         break;
 
       case ExprType::Br:
-        Write("wasm_rt_consume_fuel(1);", Newline());
         Write(GotoLabel(cast<BrExpr>(&expr)->var), Newline());
         // Stop processing this ExprList, since the following are unreachable.
         return;
@@ -3610,13 +3609,11 @@ void CWriter::Write(const ExprList& exprs) {
       case ExprType::BrIf:
         Write("if (", StackVar(0), ") {");
         DropTypes(1);
-        Write("wasm_rt_consume_fuel(1);", Newline());
         Write(GotoLabel(cast<BrIfExpr>(&expr)->var), "}", Newline());
         break;
 
       case ExprType::BrOnNonNull:
         Write("if (", StackVar(0), ".func != NULL) {");
-        Write("wasm_rt_consume_fuel(1);", Newline());
         Write(GotoLabel(cast<BrOnNonNullExpr>(&expr)->var), "}", Newline());
         DropTypes(1);
         break;
@@ -3625,7 +3622,6 @@ void CWriter::Write(const ExprList& exprs) {
         Write("if (", StackVar(0), ".func == NULL) {");
         Type type = StackType(0);
         DropTypes(1);
-        Write("wasm_rt_consume_fuel(1);", Newline());
         Write(GotoLabel(cast<BrOnNullExpr>(&expr)->var), "}", Newline());
         PushType(type);
         break;
@@ -3637,9 +3633,8 @@ void CWriter::Write(const ExprList& exprs) {
         DropTypes(1);
         Index i = 0;
         for (const Var& var : bt_expr->targets) {
-          Write("case ", i++, ": wasm_rt_consume_fuel(1); ", GotoLabel(var), Newline());
+          Write("case ", i++, ": ", GotoLabel(var), Newline());
         }
-        Write("default: wasm_rt_consume_fuel(1); ");
         Write(GotoLabel(bt_expr->default_target), Newline(), CloseBrace(),
               Newline());
         // Stop processing this ExprList, since the following are unreachable.
